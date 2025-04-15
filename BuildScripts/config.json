@@ -1,0 +1,47 @@
+﻿{
+	"admin_username": "cs_admin",
+	"admin_password": "New123Pass!",
+    "domain_info": {
+        "domain_name": "dkettman.local"
+    },
+    "lab_name": "ssop",
+    "network_info": {
+		"lab_subnet": "192.168.11.0/24",
+		"role_ips": {
+			"dc": 10,
+			"sql": 20,
+			"web": 30,
+			"rmq": 40
+		}
+	},
+    "sql": {
+        "sqlsvcaccount": "svc_sql",
+        "sqlsvcpassword": "New123Pass!"
+    },
+    "svrs": {
+        "ssop-web01": {
+            "role": "web",
+            "cpu": 2,
+            "memory": "2GB",
+            "domain": "dkettman.local"
+        },
+        "ssop-web02": {
+            "role": "web",
+            "cpu": 2,
+            "memory": "2GB",
+            "domain": "dkettman.local"
+        },
+        "ssop-dc01": {
+            "role": "dc",
+            "cpu": 1,
+            "memory": "1GB",
+            "domain": "dkettman.local"
+        },
+        "ssop-sql01": {
+            "role": "sql",
+            "cpu": 2,
+            "memory": "4GB",
+            "domain": "dkettman.local"
+        }
+    }
+}
