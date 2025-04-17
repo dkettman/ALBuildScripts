@@ -14,16 +14,18 @@ sql:
   sqlsvcaccount: svc_sql
   sqlsvcpassword: New123Pass!
 svrs:
-  ssop-web01:
-    role: web
-    domain: dkettman.local
-  ssop-web02:
-    role: web
-    domain: dkettman.local
   ssop-dc01:
     role: dc
     domain: dkettman.local
   ssop-sql01:
     role: sql
     domain: dkettman.local
-
+  ssop-web01:
+    role: web
+    domain: dkettman.local
+  ssop-web02:
+    role: web
+    domain: dkettman.local
+  ssop-rmq01:
+    role: rmq
+    domain: dkettman.local
