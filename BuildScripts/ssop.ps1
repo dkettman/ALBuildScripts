@@ -35,6 +35,8 @@ Add-LabVirtualNetworkDefinition -Name $LabName -AddressSpace $LabSubnet
 
 Add-LabDomainDefinition -Name $config.domain_info.domain_name -AdminUser $config.admin_username -AdminPassword $config.admin_password
 
+$Domain_DN = 'DC='+$config.domain_info.domain_name.Replace('.',',DC=')
+
 Add-LabIsoImageDefinition -Name SQLServer2022 -Path F:\LabSources\ISOs\SQLServer2022-x64-ENU-Dev.iso
 
 Set-LabInstallationCredential -Username $config.admin_username -Password $config.admin_password
@@ -69,13 +71,30 @@ $SQL_postInstallActivity += Get-LabPostInstallationActivity -ScriptFileName 'SQL
 # Windows Feature sets for each machine type
 ## Web Servers
 ### These will have both IIS installed and the ADUC tools, etc. These will be the 'admin boxes' of the lab.
-$WF_Web = @( 'Web-Server', 
-    'RSAT-AD-Tools', 
+$WF_Web = @( 
+    'NET-Framework-45-ASPNET',
+    'NET-WCF-HTTP-Activation45',
+    'NET-WCF-TCP-Activation45',
+    'NET-WCF-TCP-PortSharing45',
     'RSAT-AD-Powershell',
-    'RSAT-ADDS-Tools',
-    'RSAT-DNS-Server',
+    'RSAT-AD-Tools', 
     'RSAT-ADCS',
     'RSAT-ADCS-Mgmt'
+    'RSAT-ADDS-Tools',
+    'RSAT-DNS-Server',
+    'WAS',
+    'WAS-Config-APIs',
+    'WAS-Process-Model',
+    'Web-AppInit',
+    'Web-ASP-Net45',
+    'Web-Dyn-Compression',
+    'Web-Http-Redirect',
+    'Web-ISAPI-Ext',
+    'Web-ISAPI-Filter',
+    'Web-Net-Ext45',
+    'Web-Scripting-Tools',
+    'Web-Server',
+    'Web-Windows-Auth'
 )
 
 # Add Lab Machine Definitions
@@ -167,16 +186,57 @@ elseif ( $nat_err_cnt -gt 0 ) {
 else {
     Write-ScreenInfo -Type Warning -Message (("Existing NAT ({0}) is correct and current!") -f $net_nats[0].Name )
 }
-
 Write-ScreenInfo -Type Info -TaskEnd -Message "NAT - VM Switch NAT Setup Complete"
 
 
 # Install Everything
 Install-Lab
 
+Write-ScreenInfo -Type Info -TaskStart -Message "Setting up AD Objects"
+# Create AD Infrastructure and service accounts
+## Lets start with OUs
+Write-ScreenInfo -Type Info -TaskStart -Message "Creating AD OUs"
+foreach ($ou in $config.activeDirectory.ous) {
+    Write-ScreenInfo -Type Info -Message "AD OU: $ou"
+    Invoke-LabCommand -ActivityName "AD OU: $ou" -ComputerName ((Get-LabMachines -role dc | Select-Object -First 1)) -ArgumentList $ou -ScriptBlock {
+        New-ADOrganizationalUnit -Name $args[0]
+    }
+    Write-ScreenInfo -Type Info -Message "AD OU: $ou Created"
+}
+Write-ScreenInfo -Type Info -TaskEnd -Message "AD OUs Created"
+
+Write-ScreenInfo -Type Info -TaskStart -Message "Creating AD Service Accounts"
+foreach ($user in $config.activeDirectory.users.GetEnumerator()) {
+    Write-ScreenInfo -Type Info -Message ("AD Service Account: {0}" -f $user.name)
+    Invoke-LabCommand `
+        -ActivityName ("AD Service Account: {0}" -f $user.name) `
+        -ComputerName ((Get-LabMachines -role dc | Select-Object -First 1)) `
+        -ArgumentList @( $user.name, 
+#            $user.value.Enabled, 
+#            $user.value.description, $user.value.displayname, 
+#            $user.value.passwordneverexpires, 
+            $user.value.ou, 
+            $Domain_DN, $config.admin_password ) `
+        -ScriptBlock {
+            Write-Host New-ADUser `
+                -Name $args[0] `
+                -Path ("'OU={0},{1}'" -f $args[1], $args[2]) `
+                -AccountPassword ($args[3] | ConvertTo-SecureString -AsPlainText -Force)
+                #                -Enabled $args[1] `
+                #                -Description ("'{0}'" -f $args[2]) `
+                #                -DisplayName ("'{0}'" -f $args[3]) `
+                #                -PasswordNeverExpires $args[4] `
+        }
+    Write-ScreenInfo -Type Info -Message ("AD Service Account: {0} Created" -f $user.name)
+}
+Write-ScreenInfo -Type Info -TaskEnd -Message "AD Service Accounts Created"
+
+
+
 # Install IIS and whatnot on Web servers
 if ( (Get-LabMachines -Role web).Count -gt 0 ) {
     Install-LabWindowsFeature -ComputerName (Get-LabMachines web) -IncludeManagementTools -FeatureName $WF_Web 
+
 }
 
 # RabbitMQ Servers

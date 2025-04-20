@@ -29,3 +29,22 @@ svrs:
   ssop-rmq01:
     role: rmq
     domain: dkettman.local
+activeDirectory:
+  ous:
+  - "Service Accounts"
+  - "Domain Users"
+  - "Domain Groups"
+  users:
+    svc_vault_iis:
+      ou: "Service Accounts"
+      Description: "Used for Secret Server IIS Service"
+      DisplayName: "IIS Vault"
+      Enabled: 1
+      PasswordNeverExpires: 1
+    svc_vault_sql:
+      ou: "Service Accounts"
+      Description: "Used for Secret Server SQL Service"
+      DisplayName: "SQL Vault"
+      Enabled: 1
+      PasswordNeverExpires: 1
+
