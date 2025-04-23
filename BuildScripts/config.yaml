@@ -37,14 +37,19 @@ activeDirectory:
   users:
     svc_vault_iis:
       ou: "Service Accounts"
-      Description: "Used for Secret Server IIS Service"
-      DisplayName: "IIS Vault"
+      Description: "Used for Vault IIS Service"
+      DisplayName: "Vault IIS Service"
       Enabled: 1
       PasswordNeverExpires: 1
     svc_vault_sql:
       ou: "Service Accounts"
-      Description: "Used for Secret Server SQL Service"
-      DisplayName: "SQL Vault"
+      Description: "Used for Vault SQL Service"
+      DisplayName: "Vault SQL Service"
       Enabled: 1
       PasswordNeverExpires: 1
-
+    dkettman:
+      ou: "Domain Users"
+      Description: "Dave Kettmann"
+      DisplayName: "Dave Kettmann"
+      Enabled: 1
+      PasswordNeverExpires: 1

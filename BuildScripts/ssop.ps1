@@ -129,15 +129,6 @@ $config.svrs.GetEnumerator() | ForEach-Object {
             break
         }
         default {
-            # $params = @{
-            #     Name = $svr.Name
-            #     Network = $LabName
-            #     DomainName = $svr.Value.domain
-            #     IpAddress = $svr.Value.ipaddress
-            #     OperatingSystem = if ( $svr.Contains('os') ) { $svr.Values.os } else { 'Windows Server 2022 Standard (Desktop Experience)' }
-            #     Gateway = ('{0}1' -f $LabSubnetStub) 
-            # }
-            # Add-LabMachineDefinition @params
             Add-LabMachineDefinition `
                 -Name $svr.Name `
                 -Network $LabName `
@@ -195,40 +186,40 @@ Install-Lab
 Write-ScreenInfo -Type Info -TaskStart -Message "Setting up AD Objects"
 # Create AD Infrastructure and service accounts
 ## Lets start with OUs
-Write-ScreenInfo -Type Info -TaskStart -Message "Creating AD OUs"
-foreach ($ou in $config.activeDirectory.ous) {
-    Write-ScreenInfo -Type Info -Message "AD OU: $ou"
-    Invoke-LabCommand -ActivityName "AD OU: $ou" -ComputerName ((Get-LabMachines -role dc | Select-Object -First 1)) -ArgumentList $ou -ScriptBlock {
-        New-ADOrganizationalUnit -Name $args[0]
+Invoke-LabCommand `
+    -ActivityName "Creating AD OUs" `
+    -ComputerName ((Get-LabMachines -role dc | Select-Object -First 1)) `
+    -ArgumentList $config.activedirectory.OUs `
+    -ScriptBlock {
+        foreach ( $ou in $args[0] ) {
+            New-ADOrganizationalUnit -Name $ou
+        }
     }
-    Write-ScreenInfo -Type Info -Message "AD OU: $ou Created"
-}
 Write-ScreenInfo -Type Info -TaskEnd -Message "AD OUs Created"
 
 Write-ScreenInfo -Type Info -TaskStart -Message "Creating AD Service Accounts"
-foreach ($user in $config.activeDirectory.users.GetEnumerator()) {
-    Write-ScreenInfo -Type Info -Message ("AD Service Account: {0}" -f $user.name)
-    Invoke-LabCommand `
-        -ActivityName ("AD Service Account: {0}" -f $user.name) `
-        -ComputerName ((Get-LabMachines -role dc | Select-Object -First 1)) `
-        -ArgumentList @( $user.name, 
-#            $user.value.Enabled, 
-#            $user.value.description, $user.value.displayname, 
-#            $user.value.passwordneverexpires, 
-            $user.value.ou, 
-            $Domain_DN, $config.admin_password ) `
-        -ScriptBlock {
-            Write-Host New-ADUser `
-                -Name $args[0] `
-                -Path ("'OU={0},{1}'" -f $args[1], $args[2]) `
-                -AccountPassword ($args[3] | ConvertTo-SecureString -AsPlainText -Force)
-                #                -Enabled $args[1] `
-                #                -Description ("'{0}'" -f $args[2]) `
-                #                -DisplayName ("'{0}'" -f $args[3]) `
-                #                -PasswordNeverExpires $args[4] `
+Invoke-LabCommand `
+    -ActivityName "Creating AD Service Accounts" `
+    -ComputerName ((Get-LabMachines -role dc | Select-Object -First 1)) `
+    -ArgumentList @(
+        $config.activedirectory.users, 
+        $Domain_DN,  
+        ($config.admin_password | ConvertTo-SecureString -AsPlainText -Force ) 
+    ) `
+    -ScriptBlock {
+        foreach ($user in $args[0].GetEnumerator()) {
+            $params = @{
+                Name = $user.name
+                Path = ("OU={0},{1}" -f $user.value.ou, $args[1])
+                Description = ("`"{0}`"" -f $user.value.Description)
+                DisplayName = ("`"{0}`"" -f $user.value.DisplayName)
+                Enabled = ($user.value.Enabled -eq 1)
+                PasswordNeverExpires = ($user.value.PasswordNeverExpires -eq 1)
+                AccountPassword = $args[2]
+            }
+            New-ADUser @params
         }
-    Write-ScreenInfo -Type Info -Message ("AD Service Account: {0} Created" -f $user.name)
-}
+    }
 Write-ScreenInfo -Type Info -TaskEnd -Message "AD Service Accounts Created"
 
 
@@ -236,7 +227,8 @@ Write-ScreenInfo -Type Info -TaskEnd -Message "AD Service Accounts Created"
 # Install IIS and whatnot on Web servers
 if ( (Get-LabMachines -Role web).Count -gt 0 ) {
     Install-LabWindowsFeature -ComputerName (Get-LabMachines web) -IncludeManagementTools -FeatureName $WF_Web 
-
+    $cert = Request-LabCertificate -Subject 'CN=vault' -SAN 'vault.dkettman.local' -TemplateName WebServer -ComputerName @('ssop-web01','ssop-web02') -PassThru
+    Write-Host $cert
 }
 
 # RabbitMQ Servers
@@ -278,5 +270,7 @@ if ((Get-LabMachines -Role "rmq") -gt 0 ) {
         & "C:\Program Files\PowerShell\7\pwsh.exe" -Command C:\Temp\RMQ\Setup-Erlang-RMQ-Helper.ps1
     }
 }
+
+Checkpoint-LabVM -SnapshotName "Fresh Build" -ComputerName @((Get-LabMachines -role web),(Get-LabMachines -role rmq))
 
 Show-LabDeploymentSummary
