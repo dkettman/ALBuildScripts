@@ -29,7 +29,7 @@ foreach ($s in $config.svrs.Keys) {
     $config.svrs.$s.ipaddress = Get-LabVMIP $config.svrs.$s.role $s
 }
 
-New-LabDefinition -Name $LabName -DefaultVirtualizationEngine HyperV 
+New-LabDefinition -Name $LabName -DefaultVirtualizationEngine HyperV
 
 Add-LabVirtualNetworkDefinition -Name $LabName -AddressSpace $LabSubnet
 
@@ -65,8 +65,8 @@ $role_SQL2022 = Get-LabMachineRoleDefinition -Role SQLServer2022 @{
     SQLSvcPassword = $config.sql.sqlsvcpassword
 }
 
-$SQL_postInstallActivity = @()
-$SQL_postInstallActivity += Get-LabPostInstallationActivity -ScriptFileName 'SQL-Enable NP and TCP.ps1' -DependencyFolder $global:labSources/PostinstallationActivities/SqlServer2022
+$pia_SQL2022 = @()
+$pia_SQL2022 += Get-LabPostInstallationActivity -ScriptFileName 'SQL-Enable NP and TCP.ps1' -DependencyFolder $global:labSources/PostinstallationActivities/SqlServer2022
 
 # Windows Feature sets for each machine type
 ## Web Servers
@@ -123,7 +123,7 @@ $config.svrs.GetEnumerator() | ForEach-Object {
                 -Role $role_SQL2022 `
                 -OperatingSystem 'Windows Server 2022 Standard' `
                 -Gateway ('{0}1' -f $LabSubnetStub) `
-                -PostInstallationActivity $SQL_postInstallActivity
+                -PostInstallationActivity $pia_SQL2022
             #-Memory $svr.Value.memory `
             #-Processors $svr.Value.cpu
             break
@@ -224,12 +224,50 @@ Write-ScreenInfo -Type Info -TaskEnd -Message "AD Service Accounts Created"
 
 
 
-# Install IIS and whatnot on Web servers
-if ( (Get-LabMachines -Role web).Count -gt 0 ) {
-    Install-LabWindowsFeature -ComputerName (Get-LabMachines web) -IncludeManagementTools -FeatureName $WF_Web 
-    $cert = Request-LabCertificate -Subject 'CN=vault' -SAN 'vault.dkettman.local' -TemplateName WebServer -ComputerName @('ssop-web01','ssop-web02') -PassThru
-    Write-Host $cert
-}
+# # Install IIS and whatnot on Web servers
+# if ( (Get-LabMachines -Role web).Count -gt 0 ) {
+#     Install-LabWindowsFeature -ComputerName (Get-LabMachines web) -IncludeManagementTools -FeatureName $WF_Web 
+#     Request-LabCertificate -Subject 'CN=vault' -SAN 'vault.dkettman.local' -TemplateName WebServer -ComputerName @('ssop-web01','ssop-web02') -PassThru
+#     Invoke-LabCommand `
+#         -ActivityName "Configuring IIS for Vault" `
+#         -ComputerName @('ssop-web01','ssop-web02') `
+#         -ArgumentList @(($config.domain_info.domain_name).Split(".")[0],
+#             "svc_vault_iis", 
+#             $config.admin_password
+#         ),
+#         -ScriptBlock {
+#             Import-Module WebAdministration
+#             $pool = New-WebAppPool -Name SecretServer
+#             $pool.processModel.identityType = "SpecificUser"
+#             $pool.processModel.userName = ($args[0]+"\"+$args[1])
+#             $pool.processModel.password = $args[2]
+#             $pool.processModel.loadUserProfile = $true
+#             $pool.recycling.periodicRestart.time = "00:00:00"
+#             $pool | Set-Item
+#             New-WebBinding -Name "Default Web Site" -IPAddress "*" -Port 443 -Protocol https
+#             (Get-WebBinding -Name "Default Web Site" -Port 443 -Protocol https).AddSSLCertificate( `
+#                 (Get-ChildItem cert:\localmachine\my | Where-Object { $_.Subject -eq "CN=vault" }).Thumbprint, "my"
+#             )
+#         }
+#     Copy-LabFileItem -Path $global:labSources\SoftwarePackages\Delinea\Version_11_7_000061.zip `
+#         -ComputerName (Get-LabMachines -Role web) `
+#         -DestinationFolderPath "C:\Temp\"
+#     Invoke-LabCommand -ComputerName (Get-LabMachines -Role web) -ActivityName "Extract Secret Server files" -ScriptBlock {
+#             Expand-Archive -Path C:\Temp\Version_11_7_000061.zip -DestinationPath C:\Temp
+#             mkdir C:\inetpub\wwwroot\secretserver
+#             Expand-Archive -Path c:\Temp\ss_update.zip -DestinationPath C:\inetpub\wwwroot\secretserver
+#         }
+#     Invoke-LabCommand `
+#         -ComputerName (Get-LabMachines -Role web) `
+#         -ActivityName "Setup Secret Server IIS Application" `
+#         -ArgumentList @($config.activedirectory.domain+"\svc_vault_iis"),
+#         -ScriptBlock {
+#             ConvertTo-WebApplication `
+#                 -ApplicationPool SecretServer `
+#                 -PSPath "IIS:\Sites\Default Web Site\secretserver"
+#             c:\Windows\Microsoft.NET\Framework\v4.0.30319\aspnet_regiis -ga $args[0]
+#         }
+# }
 
 # RabbitMQ Servers
 if ((Get-LabMachines -Role "rmq") -gt 0 ) {
@@ -271,6 +309,6 @@ if ((Get-LabMachines -Role "rmq") -gt 0 ) {
     }
 }
 
-Checkpoint-LabVM -SnapshotName "Fresh Build" -ComputerName @((Get-LabMachines -role web),(Get-LabMachines -role rmq))
+Checkpoint-LabVM -SnapshotName "Fresh Build" -All
 
 Show-LabDeploymentSummary

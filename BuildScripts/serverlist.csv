@@ -1,7 +1,0 @@
-﻿Hostname,Roles, CPU, Memory, Domain
-ssop-web01,Web, 2, 2048, dkettman.local
-ssop-web02,Web, 2, 2048, dkettman.local
-ssop-sql01,SQLServer2022, 2, 2048, dkettman.local
-ssop-rmq01,RMQ, 2, 2048, dkettman.local
-ssop-rmq02,RMQ, 2, 2048, dkettman.local
-ssop-rmq03,RMQ, 2, 2048, dkettman.local
