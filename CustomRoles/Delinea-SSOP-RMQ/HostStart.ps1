@@ -1,3 +1,8 @@
+param (
+    [Parameter(Mandatory)]
+    [String]$ComputerName
+)
+
 $dl_path = "$global:labsources\SoftwarePackages\RMQ"
 
 if ( -not (Test-Path $dl_path) ) {

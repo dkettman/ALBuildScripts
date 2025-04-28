@@ -1,6 +1,11 @@
-﻿# Import config.json
+﻿# First, make sure we are running in PS7 and not PS5
+if ($PSVersionTable.PSVersion -lt 7) {
+    Write-Error "Must use PowerShell 7!"
+}
+
+# Import config.json
 ## Was going to use JSON for config, but discrepancies between how PowerShell 5 and PowerShell 7 handle the JSON conversion led to using YAML
-$config = Get-Content config.yaml -Raw | ConvertFrom-Yaml
+$config = Get-Content config.json -Raw | ConvertFrom-JSON -AsHashtable
 
 
 $LabName = $config.lab_name
@@ -71,31 +76,31 @@ $pia_SQL2022 += Get-LabPostInstallationActivity -ScriptFileName 'SQL-Enable NP a
 # Windows Feature sets for each machine type
 ## Web Servers
 ### These will have both IIS installed and the ADUC tools, etc. These will be the 'admin boxes' of the lab.
-$WF_Web = @( 
-    'NET-Framework-45-ASPNET',
-    'NET-WCF-HTTP-Activation45',
-    'NET-WCF-TCP-Activation45',
-    'NET-WCF-TCP-PortSharing45',
-    'RSAT-AD-Powershell',
-    'RSAT-AD-Tools', 
-    'RSAT-ADCS',
-    'RSAT-ADCS-Mgmt'
-    'RSAT-ADDS-Tools',
-    'RSAT-DNS-Server',
-    'WAS',
-    'WAS-Config-APIs',
-    'WAS-Process-Model',
-    'Web-AppInit',
-    'Web-ASP-Net45',
-    'Web-Dyn-Compression',
-    'Web-Http-Redirect',
-    'Web-ISAPI-Ext',
-    'Web-ISAPI-Filter',
-    'Web-Net-Ext45',
-    'Web-Scripting-Tools',
-    'Web-Server',
-    'Web-Windows-Auth'
-)
+# $WF_Web = @( 
+#     'NET-Framework-45-ASPNET',
+#     'NET-WCF-HTTP-Activation45',
+#     'NET-WCF-TCP-Activation45',
+#     'NET-WCF-TCP-PortSharing45',
+#     'RSAT-AD-Powershell',
+#     'RSAT-AD-Tools', 
+#     'RSAT-ADCS',
+#     'RSAT-ADCS-Mgmt'
+#     'RSAT-ADDS-Tools',
+#     'RSAT-DNS-Server',
+#     'WAS',
+#     'WAS-Config-APIs',
+#     'WAS-Process-Model',
+#     'Web-AppInit',
+#     'Web-ASP-Net45',
+#     'Web-Dyn-Compression',
+#     'Web-Http-Redirect',
+#     'Web-ISAPI-Ext',
+#     'Web-ISAPI-Filter',
+#     'Web-Net-Ext45',
+#     'Web-Scripting-Tools',
+#     'Web-Server',
+#     'Web-Windows-Auth'
+# )
 
 # Add Lab Machine Definitions
 $config.svrs.GetEnumerator() | ForEach-Object {

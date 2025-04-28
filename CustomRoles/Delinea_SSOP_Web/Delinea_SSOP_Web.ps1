@@ -1,6 +1,6 @@
 param (
     [Parameter(Mandatory)]
-    [String]
+    [string]
     $DomainName,
 
     [Parameter(Mandatory)]
@@ -10,6 +10,7 @@ param (
     [Parameter(Mandatory)]
     [String]
     $AppPoolPassword
+
 )
 
 Import-Module WebAdministration
@@ -22,7 +23,6 @@ $pool.recycling.perodicRestart.time = "00:00:00"
 $pool | Set-Item
 
 New-WebBinding -Name "Default Web Site" -IPAddress "*" -Port 443 -Protocol https
-
 
 mkdir C:\inetpub\wwwroot\SecretServer
 Expand-Archive -Path C:\Temp\ss_update.zip -DestinationPath C:\inetpub\wwwroot\SecretServer

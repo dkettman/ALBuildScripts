@@ -1,6 +1,6 @@
 # Import config.json
 ## Was going to use JSON for config, but discrepancies between how PowerShell 5 and PowerShell 7 handle the JSON conversion led to using YAML
-$config = Get-Content config.yaml -Raw | ConvertFrom-Yaml
+$config = Get-Content config.json -Raw | ConvertFrom-Json -AsHashtable
 
 
 $LabName = $config.lab_name
@@ -68,32 +68,108 @@ $role_SQL2022 = Get-LabMachineRoleDefinition -Role SQLServer2022 @{
 $SQL2022_postInstallActivity = @()
 $SQL2022_postInstallActivity += Get-LabPostInstallationActivity -ScriptFileName 'SQL-Enable NP and TCP.ps1' -DependencyFolder $global:labSources/PostinstallationActivities/SqlServer2022
 
-# Windows Feature sets for each machine type
-## Web Servers
-### These will have both IIS installed and the ADUC tools, etc. These will be the 'admin boxes' of the lab.
-$WF_Web = @( 
-    'NET-Framework-45-ASPNET',
-    'NET-WCF-HTTP-Activation45',
-    'NET-WCF-TCP-Activation45',
-    'NET-WCF-TCP-PortSharing45',
-    'RSAT-AD-Powershell',
-    'RSAT-AD-Tools', 
-    'RSAT-ADCS',
-    'RSAT-ADCS-Mgmt'
-    'RSAT-ADDS-Tools',
-    'RSAT-DNS-Server',
-    'WAS',
-    'WAS-Config-APIs',
-    'WAS-Process-Model',
-    'Web-AppInit',
-    'Web-ASP-Net45',
-    'Web-Dyn-Compression',
-    'Web-Http-Redirect',
-    'Web-ISAPI-Ext',
-    'Web-ISAPI-Filter',
-    'Web-Net-Ext45',
-    'Web-Scripting-Tools',
-    'Web-Server',
-    'Web-Windows-Auth'
-)
+## Web Server (Role: Delinea_SSOP_Web)
+$role_Delinea_SSOP_Web = Get-LabPostInstallationActivity -CustomRole Delinea_SSOP_Web -Properties @{ 
+                                    DomainName = $config.domain_info.domain_name
+                                    AppPoolUsername = "svc_vault_iis"
+                                    AppPoolPassword = $config.admin_password }
 
+$role_Delinea_SSOP_RMQ = Get-LabPostInstallationActivity -CustomRole Delinea-SSOP-RMQ 
+
+$config.svrs.GetEnumerator() | ForEach-Object {
+    $svr = $_
+    switch ($_.Value.role) {
+        "dc" {
+            Add-LabMachineDefinition `
+                -Name $svr.Name `
+                -Network $LabName `
+                -DomainName $svr.Value.domain `
+                -IpAddress $svr.Value.ipaddress `
+                -Role $role_DC, CaRoot `
+                -OperatingSystem 'Windows Server 2022 Standard' `
+                -Gateway ('{0}1' -f $LabSubnetStub)
+            break
+        }
+        "rmq" {
+            Add-LabMachineDefinition `
+                -Name $svr.Name `
+                -Network $LabName `
+                -DomainName $svr.Value.domain `
+                -IpAddress $svr.Value.ipaddress `
+                -OperatingSystem 'Windows Server 2022 Standard (Desktop Experience)' `
+                -Gateway ('{0}1' -f $LabSubnetStub) `
+                -PostInstallationActivity $role_Delinea_SSOP_RMQ
+            break
+        }
+        "sql" {
+            Add-LabMachineDefinition `
+                -Name $svr.Name `
+                -Network $LabName `
+                -DomainName $svr.Value.domain `
+                -IpAddress $svr.Value.ipaddress `
+                -Role $role_SQL2022 `
+                -OperatingSystem 'Windows Server 2022 Standard' `
+                -Gateway ('{0}1' -f $LabSubnetStub) `
+                -PostInstallationActivity $SQL2022_postInstallActivity
+            break
+        }
+        "web" {
+            Add-LabMachineDefinition `
+                -Name $svr.Name `
+                -Network $LabName `
+                -DomainName $svr.Value.domain `
+                -IpAddress $svr.Value.ipaddress `
+                -OperatingSystem 'Windows Server 2022 Standard (Desktop Experience)' `
+                -Gateway ('{0}1' -f $LabSubnetStub) `
+                -PostInstallationActivity $role_Delinea_SSOP_web
+            break
+        }
+        default {
+            Add-LabMachineDefinition `
+                -Name $svr.Name `
+                -Network $LabName `
+                -DomainName $svr.Value.domain `
+                -IpAddress $svr.Value.ipaddress `
+                -OperatingSystem 'Windows Server 2022 Standard (Desktop Experience)' `
+                -Gateway ('{0}1' -f $LabSubnetStub)
+            break
+        }
+    }
+}
+
+# Install and configure the network (If needed)
+Write-ScreenInfo -Type Info -TaskStart -Message "NAT - VM Switch NAT Setup"
+
+$net_nats = Get-NetNat
+$nat_err_cnt = 0
+
+if ( $net_nats.Count -gt 0 ) {
+    Write-ScreenInfo -Type Warning -Message (("Found an existing NAT! Checking to make sure it is valid"))
+    if ( $net_nats[0].Name -eq $LabName ) {
+        Write-ScreenInfo -Type Verbose -Message (("Current NAT has correct name ({0}).") -f $LabName)
+    }
+    else {
+        Write-ScreenInfo -Type Error -Message (("Current NAT has an incorrect name (Is: {0}, should be: {1})." ) -f $net_nats[0].Name, $LabName )
+        $nat_err_cnt++
+    }
+
+    if ( $net_nats[0].InternalIPInterfaceAddressPrefix -eq $LabSubnet ) {
+        Write-ScreenInfo -Type Verbose -Message (("Current NAT has correct subnet ({0}).") -f $LabSubnet)
+    }
+    else {
+        Write-ScreenInfo -Type Error -Message (("Current NAT has an incorrect Subnet (Is: {0}, should be: {1})." ) -f $net_nats[0].InternalIPInterfaceAddressPrefix, $LabSubnet )
+        $nat_err_cnt++
+    }
+
+}
+elseif (( $net_nats.Count -eq 0 ) -and ( $nat_err_cnt -eq 0 )) {
+    Write-ScreenInfo -Type Info -Message (("NAT did not exist! Creating..."))
+    New-NetNat -Name $LabName -InternalIPInterfaceAddressPrefix $LabSubnet | Out-Null
+}
+elseif ( $nat_err_cnt -gt 0 ) {
+    Write-ScreenInfo -Type Error -Message (("Something went wrong. Please check NAT configuration and try again."))
+}
+else {
+    Write-ScreenInfo -Type Warning -Message (("Existing NAT ({0}) is correct and current!") -f $net_nats[0].Name )
+}
+Write-ScreenInfo -Type Info -TaskEnd -Message "NAT - VM Switch NAT Setup Complete"
