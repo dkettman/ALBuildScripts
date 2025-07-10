@@ -63,6 +63,7 @@ $role_DC = Get-LabMachineRoleDefinition -Role RootDC @{
     SiteSubnet = $LabSubnet
 }
 
+
 ## SQLServer 2022 (Role: SqlServer2022)
 $role_SQL2022 = Get-LabMachineRoleDefinition -Role SQLServer2022 @{
     Features       = 'SQL,Tools'
@@ -72,35 +73,6 @@ $role_SQL2022 = Get-LabMachineRoleDefinition -Role SQLServer2022 @{
 
 $pia_SQL2022 = @()
 $pia_SQL2022 += Get-LabPostInstallationActivity -ScriptFileName 'SQL-Enable NP and TCP.ps1' -DependencyFolder $global:labSources/PostinstallationActivities/SqlServer2022
-
-# Windows Feature sets for each machine type
-## Web Servers
-### These will have both IIS installed and the ADUC tools, etc. These will be the 'admin boxes' of the lab.
-# $WF_Web = @( 
-#     'NET-Framework-45-ASPNET',
-#     'NET-WCF-HTTP-Activation45',
-#     'NET-WCF-TCP-Activation45',
-#     'NET-WCF-TCP-PortSharing45',
-#     'RSAT-AD-Powershell',
-#     'RSAT-AD-Tools', 
-#     'RSAT-ADCS',
-#     'RSAT-ADCS-Mgmt'
-#     'RSAT-ADDS-Tools',
-#     'RSAT-DNS-Server',
-#     'WAS',
-#     'WAS-Config-APIs',
-#     'WAS-Process-Model',
-#     'Web-AppInit',
-#     'Web-ASP-Net45',
-#     'Web-Dyn-Compression',
-#     'Web-Http-Redirect',
-#     'Web-ISAPI-Ext',
-#     'Web-ISAPI-Filter',
-#     'Web-Net-Ext45',
-#     'Web-Scripting-Tools',
-#     'Web-Server',
-#     'Web-Windows-Auth'
-# )
 
 # Add Lab Machine Definitions
 $config.svrs.GetEnumerator() | ForEach-Object {
@@ -115,8 +87,6 @@ $config.svrs.GetEnumerator() | ForEach-Object {
                 -Role $role_DC, CaRoot `
                 -OperatingSystem 'Windows Server 2022 Standard' `
                 -Gateway ('{0}1' -f $LabSubnetStub) `
-                #-Memory $svr.Value.memory `
-                #-Processors $svr.Value.cpu
             break
         }
         "sql" {
@@ -133,6 +103,17 @@ $config.svrs.GetEnumerator() | ForEach-Object {
             #-Processors $svr.Value.cpu
             break
         }
+        "web" {
+            Add-LabMachineDefinition `
+                -Name $svr.Name `
+                -Network $LabName `
+                -DomainName $svr.Value.domain `
+                -IpAddress $svr.Value.ipaddress `
+                -OperatingSystem 'Windows Server 2022 Standard (Desktop Experience)' `
+                -Gateway ('{0}1' -f $LabSubnetStub) `
+                -PostInstallationActivity $role_Delinea_SSOP_web
+            break
+        }
         default {
             Add-LabMachineDefinition `
                 -Name $svr.Name `
@@ -141,8 +122,6 @@ $config.svrs.GetEnumerator() | ForEach-Object {
                 -IpAddress $svr.Value.ipaddress `
                 -OperatingSystem 'Windows Server 2022 Standard (Desktop Experience)' `
                 -Gateway ('{0}1' -f $LabSubnetStub) `
-                #-Memory $svr.Value.memory `
-                #-Processors $svr.Value.cpu
         }
     }
 }
@@ -232,7 +211,7 @@ Write-ScreenInfo -Type Info -TaskEnd -Message "AD Service Accounts Created"
 # # Install IIS and whatnot on Web servers
 # if ( (Get-LabMachines -Role web).Count -gt 0 ) {
 #     Install-LabWindowsFeature -ComputerName (Get-LabMachines web) -IncludeManagementTools -FeatureName $WF_Web 
-#     Request-LabCertificate -Subject 'CN=vault' -SAN 'vault.dkettman.local' -TemplateName WebServer -ComputerName @('ssop-web01','ssop-web02') -PassThru
+#     Request-LabCertificate -Subject 'CN=vault' -SAN 'vault.ssop.local' -TemplateName WebServer -ComputerName @('ssop-web01','ssop-web02') -PassThru
 #     Invoke-LabCommand `
 #         -ActivityName "Configuring IIS for Vault" `
 #         -ComputerName @('ssop-web01','ssop-web02') `

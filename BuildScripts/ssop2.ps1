@@ -30,15 +30,10 @@ foreach ($s in $config.svrs.Keys) {
 }
 
 New-LabDefinition -Name $LabName -DefaultVirtualizationEngine HyperV
-
 Add-LabVirtualNetworkDefinition -Name $LabName -AddressSpace $LabSubnet
-
 Add-LabDomainDefinition -Name $config.domain_info.domain_name -AdminUser $config.admin_username -AdminPassword $config.admin_password
-
 $Domain_DN = 'DC='+$config.domain_info.domain_name.Replace('.',',DC=')
-
 Add-LabIsoImageDefinition -Name SQLServer2022 -Path F:\LabSources\ISOs\SQLServer2022-x64-ENU-Dev.iso
-
 Set-LabInstallationCredential -Username $config.admin_username -Password $config.admin_password
 
 #defining default parameter values, as these ones are the same for all the machines
@@ -58,6 +53,9 @@ $role_DC = Get-LabMachineRoleDefinition -Role RootDC @{
     SiteSubnet = $LabSubnet
 }
 
+$pia_DC = @()
+$pia_DC += Get-LabPostInstallationActivity -CustomRole Delinea_SSOP_DC -Properties @{ Config = $config ; Domain_DN = $Domain_DN }
+
 ## SQLServer 2022 (Role: SqlServer2022)
 $role_SQL2022 = Get-LabMachineRoleDefinition -Role SQLServer2022 @{
     Features       = 'SQL,Tools'
@@ -69,12 +67,23 @@ $SQL2022_postInstallActivity = @()
 $SQL2022_postInstallActivity += Get-LabPostInstallationActivity -ScriptFileName 'SQL-Enable NP and TCP.ps1' -DependencyFolder $global:labSources/PostinstallationActivities/SqlServer2022
 
 ## Web Server (Role: Delinea_SSOP_Web)
-$role_Delinea_SSOP_Web = Get-LabPostInstallationActivity -CustomRole Delinea_SSOP_Web -Properties @{ 
-                                    DomainName = $config.domain_info.domain_name
-                                    AppPoolUsername = "svc_vault_iis"
-                                    AppPoolPassword = $config.admin_password }
+# $role_Delinea_SSOP_Web = Get-LabPostInstallationActivity -CustomRole Delinea_SSOP_Web -Properties @{ 
+#                                     DomainName = $config.domain_info.domain_name
+#                                     SecretServerAppUserName = "ssop\svc_vault_iis"
+#                                     SecretServerAppPassword = $config.admin_password
+#                                     DatabaseServer = 'ssop-sql01'
+#                                     DatabaseName = 'SecretServer'
+#                                     # DatabaseUsername = "svc_vault_iis"
+#                                     # DatabasePassword = $config.admin_password
+#                                     SecretServerUserName = 'ss_admin'
+#                                     SecretServerUserPassword = $config.admin_password
+#                                 }
+$role_Delinea_SSOP_Web = Get-LabPostInstallationActivity -CustomRole Delinea_SSOP_Web
 
-$role_Delinea_SSOP_RMQ = Get-LabPostInstallationActivity -CustomRole Delinea-SSOP-RMQ 
+
+## RabbitMQ (Role: Delinea_SSOP_RMQ)
+# Add in RMQ user/pass maybe?
+$role_Delinea_SSOP_RMQ = Get-LabPostInstallationActivity -CustomRole Delinea_SSOP_RMQ 
 
 $config.svrs.GetEnumerator() | ForEach-Object {
     $svr = $_
@@ -87,7 +96,8 @@ $config.svrs.GetEnumerator() | ForEach-Object {
                 -IpAddress $svr.Value.ipaddress `
                 -Role $role_DC, CaRoot `
                 -OperatingSystem 'Windows Server 2022 Standard' `
-                -Gateway ('{0}1' -f $LabSubnetStub)
+                -Gateway ('{0}1' -f $LabSubnetStub) `
+                -PostInstallationActivity $pia_DC
             break
         }
         "rmq" {
@@ -124,6 +134,17 @@ $config.svrs.GetEnumerator() | ForEach-Object {
                 -PostInstallationActivity $role_Delinea_SSOP_web
             break
         }
+        "lnx" { 
+            Add-LabDiskDefinition -DiskSizeInGb 8 -Name $svr.Name
+            Add-LabMachineDefinition `
+                -Name $svr.Name `
+                -Network $LabName `
+                -DomainName $svr.Value.domain `
+                -IPAddress $svr.Value.ipaddress `
+                -OperatingSystem 'Rocky Linux 9.5' `
+                -Gateway ('{0}1' -f $LabSubnetStub) `
+                -DiskName $svr.Name
+        }
         default {
             Add-LabMachineDefinition `
                 -Name $svr.Name `
@@ -135,6 +156,18 @@ $config.svrs.GetEnumerator() | ForEach-Object {
             break
         }
     }
+}
+
+# For some testing, going to spin up 10 Windows 2022 Core with 512MB RAM to join domain for testing
+for ( $i=0; $i -lt 10; $i++) {
+    Add-LabMachineDefinition `
+        -Name ("ssop-win{0:d2}" -f $i) `
+        -Network $LabName `
+        -DomainName 'ssop.local' `
+        -IpAddress ('192.168.11.6{0}'-f $i) `
+        -OperatingSystem 'Windows Server 2022 Datacenter' `
+        -Gateway ('{0}1' -f $labSubnetStub) `
+        -Memory (1024*1024*512)
 }
 
 # Install and configure the network (If needed)
@@ -173,3 +206,5 @@ else {
     Write-ScreenInfo -Type Warning -Message (("Existing NAT ({0}) is correct and current!") -f $net_nats[0].Name )
 }
 Write-ScreenInfo -Type Info -TaskEnd -Message "NAT - VM Switch NAT Setup Complete"
+
+Install-Lab

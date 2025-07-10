@@ -3,6 +3,9 @@ param (
     [String]$ComputerName
 )
 
+$lab = Import-Lab -Name $data.Name -NoValidation -NoDisplay -PassThru
+$vm = Get-LabVM -ComputerName $ComputerName
+
 $dl_path = "$global:labsources\SoftwarePackages\RMQ"
 
 if ( -not (Test-Path $dl_path) ) {
@@ -25,7 +28,7 @@ $packs += Get-LabSoftwarePackage -Path $labsources\SoftwarePackages\RMQ\dotnet-h
 $packs += Get-LabSoftwarePackage -Path $labsources\SoftwarePackages\RMQ\windowsdesktop-runtime-8.0.11-win-x64.exe -CommandLine "/install /quiet /norestart"
 $packs += Get-LabSoftwarePackage -Path $labsources\SoftwarePackages\RMQ\PowerShell-7.4.6-win-x64.msi -CommandLine "/quiet ADD_EXPLORER_CONTEXT_MENU_OPENPOWERSHELL=1 ADD_FILE_CONTEXT_MENU_RUNPOWERSHELL=1 ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1 USE_MU=1 ENABLE_MU=1 ADD_PATH=1"
 
-Install-LabSoftwarePackages -Machine (Get-LabMachineDefinition $ComputerName) -SoftwarePackage $packs
+Install-LabSoftwarePackages -Machine $vm -SoftwarePackage $packs
 
-Copy-LabFileItem -Path $global:labSources\SoftwarePackages\RMQ\Delinea.RabbitMq.Helper.zip -ComputerName $ComputerName -DestinationFolderPath C:\Temp\RMQ\
-Copy-LabFileItem -Path $global:labSources\SoftwarePackages\RMQ\Setup-Erlang-RMQ-Helper.ps1 -ComputerName $ComputerName -DestinationFolderPath C:\Temp\RMQ\
+Copy-LabFileItem -Path $global:labSources\SoftwarePackages\RMQ\Delinea.RabbitMq.Helper.zip -ComputerName $vm -DestinationFolderPath C:\Temp\RMQ\
+Copy-LabFileItem -Path $global:labSources\SoftwarePackages\RMQ\Setup-Erlang-RMQ-Helper.ps1 -ComputerName $vm -DestinationFolderPath C:\Temp\RMQ\

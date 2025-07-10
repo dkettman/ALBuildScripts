@@ -1,7 +1,7 @@
 admin_username: cs_admin
 admin_password: New123Pass!
 domain_info:
-  domain_name: dkettman.local
+  domain_name: ssop.local
 lab_name: ssop
 network_info:
   lab_subnet: 192.168.11.0/24
@@ -16,19 +16,19 @@ sql:
 svrs:
   ssop-dc01:
     role: dc
-    domain: dkettman.local
+    domain: ssop.local
   ssop-sql01:
     role: sql
-    domain: dkettman.local
+    domain: ssop.local
   ssop-web01:
     role: web
-    domain: dkettman.local
+    domain: ssop.local
   ssop-web02:
     role: web
-    domain: dkettman.local
+    domain: ssop.local
   ssop-rmq01:
     role: rmq
-    domain: dkettman.local
+    domain: ssop.local
 activeDirectory:
   ous:
   - "Service Accounts"
