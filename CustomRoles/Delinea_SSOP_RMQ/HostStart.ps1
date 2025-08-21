@@ -30,5 +30,5 @@ $packs += Get-LabSoftwarePackage -Path $labsources\SoftwarePackages\RMQ\PowerShe
 
 Install-LabSoftwarePackages -Machine $vm -SoftwarePackage $packs
 
-Copy-LabFileItem -Path $global:labSources\SoftwarePackages\RMQ\Delinea.RabbitMq.Helper.zip -ComputerName $vm -DestinationFolderPath C:\Temp\RMQ\
-Copy-LabFileItem -Path $global:labSources\SoftwarePackages\RMQ\Setup-Erlang-RMQ-Helper.ps1 -ComputerName $vm -DestinationFolderPath C:\Temp\RMQ\
+Copy-LabFileItem -Path $global:labSources\SoftwarePackages\RMQ\Delinea.RabbitMq.Helper.11.1.0.zip -ComputerName $vm -DestinationFolderPath C:\Temp\RMQ\
+# Copy-LabFileItem -Path $global:labSources\SoftwarePackages\RMQ\Setup-Erlang-RMQ-Helper.ps1 -ComputerName $vm -DestinationFolderPath C:\Temp\RMQ\

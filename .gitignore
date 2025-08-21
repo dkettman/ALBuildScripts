@@ -1,7 +1,3 @@
-BuildScripts/config_lnx.json
-BuildScripts/linux_lab.ps1
-BuildScripts/scratch.ps1
-BuildScripts/testResults.xml
 CustomRoles/CM-1902/
 CustomRoles/CM-2002/
 CustomRoles/CM-2103/
@@ -19,6 +15,7 @@ CustomRoles/ProGet5/
 CustomRoles/README.md
 CustomRoles/SCCM/
 CustomRoles/WindowsAdminCenter/
+DSCConfigurations/
 ISOs/
 OSUpdates/
 PostInstallationActivities/DnsAndTrustSetup/
@@ -31,19 +28,6 @@ PostInstallationActivities/SetupDscPullServer/
 PostInstallationActivities/SqlServer/
 PostInstallationActivities/WebSiteDefaultContent/
 SampleScripts/
-SoftwarePackages/Delinea.RabbitMq.Helper.zip
-SoftwarePackages/Delinea/
-SoftwarePackages/README.md
-SoftwarePackages/RMQ/*.zip
-SoftwarePackages/RMQ/*.msi
-SoftwarePackages/RMQ/*.exe
-SoftwarePackages/SQL2022/
-SoftwarePackages/ndp48-x86-x64-allos-enu.exe
-SoftwarePackages/ReportBuilder.msi
-SoftwarePackages/vcredist_x64_2015.exe
-SoftwarePackages/vcredist_x64_2017.exe
-SoftwarePackages/vcredist_x86_2015.exe
-SoftwarePackages/vcredist_x86_2017.exe
+SoftwarePackages/
 Temp/
 Tools/
-DSCLab.ps1
