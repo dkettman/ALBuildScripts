@@ -2,7 +2,7 @@ if ( $null -eq (Get-PackageProvider -Name NuGet) ) {
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Confirm:$false
 }
 # Install-Module SQLServer -AllowClobber -Force
-if ( $null -eq (get-module -ListAvailable | where {$_.Name -eq "dbatools"}) ) {
+if ( $null -eq (get-module -ListAvailable | Where-Object {$_.Name -eq "dbatools"}) ) {
     Install-Module dbatools -Force
 }
 
@@ -54,7 +54,7 @@ if (
             -SqlInstance ssop-sql01 `
             -Database secretserver `
             -Role "db_owner" `
-            | Where { 
+            | Where-Object { 
                 $_.Username -eq "ssop\svc_vault_iis" 
             }
         )
