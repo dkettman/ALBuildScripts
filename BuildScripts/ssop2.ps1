@@ -41,7 +41,7 @@ $PSDefaultParameterValues = @{
     'Add-LabMachineDefinition:Network'         = $labName
     'Add-LabMachineDefinition:ToolsPath'       = "$labSources\Tools"
     'Add-LabMachineDefinition:DomainName'      = $config.domain_info.domain_name
-    'Add-LabMachineDefinition:DnsServer1'      = Get-LabVMIP dc ('{0}-dc01' -f $LabName)
+    'Add-LabMachineDefinition:DnsServer1'      = Get-LabVMIP DC ('{0}-dc01' -f $LabName)
     'Add-LabMachineDefinition:OperatingSystem' = 'Windows Server 2022 Standard (Desktop Experience)'
     'Add-LabMachineDefinition:Gateway'         = '{0}1' -f $LabSubnetStub
 }
@@ -78,7 +78,7 @@ $SQL2022_postInstallActivity += Get-LabPostInstallationActivity -ScriptFileName 
 #                                     SecretServerUserName = 'ss_admin'
 #                                     SecretServerUserPassword = $config.admin_password
 #                                 }
-$role_Delinea_SSOP_Web = Get-LabPostInstallationActivity -CustomRole Delinea_SSOP_Web
+$role_Delinea_SSOP_Web = Get-LabPostInstallationActivity -CustomRole Delinea_SSOP_Web -Properties @{ DomainName= (Get-LabDomainDefinition).Name }
 
 
 ## RabbitMQ (Role: Delinea_SSOP_RMQ)
@@ -134,17 +134,6 @@ $config.svrs.GetEnumerator() | ForEach-Object {
                 -PostInstallationActivity $role_Delinea_SSOP_web
             break
         }
-        "lnx" { 
-            Add-LabDiskDefinition -DiskSizeInGb 8 -Name $svr.Name
-            Add-LabMachineDefinition `
-                -Name $svr.Name `
-                -Network $LabName `
-                -DomainName $svr.Value.domain `
-                -IPAddress $svr.Value.ipaddress `
-                -OperatingSystem 'Rocky Linux 9.5' `
-                -Gateway ('{0}1' -f $LabSubnetStub) `
-                -DiskName $svr.Name
-        }
         default {
             Add-LabMachineDefinition `
                 -Name $svr.Name `
@@ -158,17 +147,6 @@ $config.svrs.GetEnumerator() | ForEach-Object {
     }
 }
 
-# For some testing, going to spin up 10 Windows 2022 Core with 512MB RAM to join domain for testing
-for ( $i=0; $i -lt 10; $i++) {
-    Add-LabMachineDefinition `
-        -Name ("ssop-win{0:d2}" -f $i) `
-        -Network $LabName `
-        -DomainName 'ssop.local' `
-        -IpAddress ('192.168.11.6{0}'-f $i) `
-        -OperatingSystem 'Windows Server 2022 Datacenter' `
-        -Gateway ('{0}1' -f $labSubnetStub) `
-        -Memory (1024*1024*512)
-}
 
 # Install and configure the network (If needed)
 Write-ScreenInfo -Type Info -TaskStart -Message "NAT - VM Switch NAT Setup"
@@ -207,4 +185,4 @@ else {
 }
 Write-ScreenInfo -Type Info -TaskEnd -Message "NAT - VM Switch NAT Setup Complete"
 
-Install-Lab
+#Install-Lab

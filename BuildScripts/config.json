@@ -8,12 +8,12 @@
   "network_info": {
     "lab_subnet": "192.168.11.0/24",
     "role_ips": {
-      "dc": 10,
-      "sql": 20,
-      "web": 30,
-      "rmq": 40,
-      "lnx": 50,
-      "win": 60
+      "DC": 10,
+      "SQL": 20,
+      "WEB": 30,
+      "RMQ": 40,
+      "LNX": 50,
+      "WIN": 60
     }
   },
   "sql": {
@@ -22,23 +22,34 @@
   },
   "svrs": {
     "ssop-dc01": {
-      "role": "dc",
+      "role": "DC",
       "domain": "ssop.local"
     },
     "ssop-sql01": {
-      "role": "sql",
-      "domain": "ssop.local"
+      "role": "SQL",
+      "domain": "ssop.local",
+      "memory": "4GB",
+      "cpu": 2
+
     },
     "ssop-rmq01": {
-      "role": "rmq",
+      "role": "RMQ",
+      "domain": "ssop.local"
+    },    
+    "ssop-rmq02": {
+      "role": "RMQ",
+      "domain": "ssop.local"
+    },
+    "ssop-rmq03": {
+      "role": "RMQ",
       "domain": "ssop.local"
     },
     "ssop-web01": {
-      "role": "web",
+      "role": "WEB",
       "domain": "ssop.local"
     },
     "ssop-web02": {
-      "role": "web",
+      "role": "WEB",
       "domain": "ssop.local"
     }
   },

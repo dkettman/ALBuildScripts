@@ -1,5 +1,5 @@
 if ( $null -eq (Get-PackageProvider -Name NuGet) ) {
-    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Confirm:$true
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Confirm:$false
 }
 # Install-Module SQLServer -AllowClobber -Force
 if ( $null -eq (get-module -ListAvailable | where {$_.Name -eq "dbatools"}) ) {
@@ -11,16 +11,29 @@ Import-Module dbatools
 
 $svr_name = (hostname)
 
-Set-DbatoolsInsecureConnection
+$changed = $false
 
-Set-DbaNetworkConfiguration -SqlInstance $svr_name -EnableProtocol NamedPipes -Confirm:$false
-Set-DbaNetworkConfiguration -SqlInstance $svr_name -EnableProtocol Tcpip -Confirm:$false
+Set-DbatoolsInsecureConnection | Out-Null
+
+$db_network_config = Get-DbaNetworkConfiguration -SqlInstance $svr_name
+
+if ( $false -eq $db_network_config.NamedPipesEnabled ) {
+    $changed = $true
+    Set-DbaNetworkConfiguration -SqlInstance $svr_name -EnableProtocol NamedPipes -Confirm:$false
+}
+
+if ( $false -eq $db_network_config.TcpIpEnabled ) {
+    $changed = $true
+    Set-DbaNetworkConfiguration -SqlInstance $svr_name -EnableProtocol Tcpip -Confirm:$false
+}
 
 if ( $null -eq (Get-DbaLogin -SqlInstance $svr_name -Login "ssop\svc_vault_iis") ) {
+    $changed = $true
     New-DbaLogin -SqlInstance $svr_name -Login "ssop\svc_vault_iis"
 }
 
 if ( $null -eq (Get-DbaDatabase -SqlInstance $svr_name -Database "SecretServer") ) {
+    $changed = $true
     New-DbaDatabase -SqlInstance $svr_name -Name "SecretServer"
 }
 
@@ -31,6 +44,7 @@ $dbuser_params.User = "ssop\svc_vault_iis"
 $dbuser_params.Login = "ssop\svc_vault_iis"
 
 if ( $null -eq (Get-DbaDbUser @dbuser_params ) ) {
+    $changed = $true
     New-DbaDbUser @dbuser_params
 }
 
@@ -45,6 +59,7 @@ if (
             }
         )
     ) { 
+        $changed = $true
         Add-DbaDbRoleMember `
             -SqlInstance $svr_name `
             -Database "SecretServer" `
@@ -53,4 +68,7 @@ if (
             -Confirm:$false
     }
 
-Restart-DbaService -Type Engine -Force
+if ( $changed ) {
+    Write-Host "Detected changes, restarting SQL Server"
+    Restart-DbaService -Type Engine -Force
+}

@@ -1,8 +1,8 @@
-if ( $null -eq (Get-PackageProvider -Name NuGet) ) {
-    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Confirm:$false
-}
+# if ( $null -eq (Get-PackageProvider -Name NuGet) ) {
+#     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Confirm:$false
+# }
 # Install-Module SQLServer -AllowClobber -Force
-if ( $null -eq (get-module -ListAvailable | where {$_.Name -eq "dbatools"}) ) {
+if ( $null -eq (Get-Command -Module dbatools) ) {
     Install-Module dbatools -Force
 }
 
